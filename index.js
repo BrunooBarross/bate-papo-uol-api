@@ -33,7 +33,7 @@ app.post("/participants", async (req, res) => {
         const participantesCollection = dbBatePapo.collection("participantes");
         const temParticipante = await participantesCollection.findOne({ name: name });
         if (temParticipante) {
-            console.log(temParticipante);
+            console.log(chalk.bold.red("O usuario já existe"),temParticipante);
             res.status(409).send("Nome de usuário já cadastrado");
             return;
         } else {
