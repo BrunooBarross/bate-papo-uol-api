@@ -56,5 +56,18 @@ app.post("/participants", async (req, res) => {
     }
 });
 
+app.get("/participants", async (req, res) => {
+    try {
+		await mongoClient.connect();
+        const dbBatePapo = mongoClient.db("batepapo");
+		const participantesCollection = dbBatePapo.collection("participantes");
+		const participantes = await participantesCollection.find({}).toArray();	
+		res.send(participantes);
+		mongoClient.close();
+	 } catch (error) {
+	    res.sendStatus(500);
+		mongoClient.close()
+	 }
+});
 
 app.listen(5000, console.log(chalk.bold.yellow("Servidor rodando na porta 5000")));
