@@ -20,8 +20,8 @@ app.post("/participants", async (req, res) => {
     const validacao = participante.validate(req.body);
 
     if (validacao.error) {
-        console.log(validacao.error.details)
-        res.status(422).send("Envia um objeto no formarto: { name: João}");
+        console.log(chalk.bold.red("nome não pode ser vazio"),validacao.error.details)
+        res.status(422).send("Use o formato: { name: João}");
         return;
     }
 
