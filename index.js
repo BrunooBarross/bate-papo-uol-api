@@ -15,7 +15,7 @@ app.use(json());
 
 app.post("/participants", async (req, res) => {
     const participante = joi.object({
-        name: joi.string()
+        name: joi.string() .required()
     })
     const validacao = participante.validate(req.body);
 
@@ -69,5 +69,32 @@ app.get("/participants", async (req, res) => {
 		mongoClient.close()
 	 }
 });
+
+app.post('/messages', async (req, res) => {
+    const mensagem = { ...req.body, from: req.headers.user }
+    const horario = dayjs().locale('pt-br').format('hh:mm:ss');
+
+    const validaMensagem = joi.object({
+        to: joi.string().required(),
+        text: joi.string().required(),
+        type: joi.string().valid('message', 'private_message').required(),
+        from: joi.string().required()
+    })
+
+    const validacao = validaMensagem.validate(mensagem)
+
+    if (validacao.error) {
+        console.log(chalk.bold.red("Algum campo está errado"), validacao.error.details)
+        res.sendStatus(422);
+        return;
+    }
+
+    try {
+
+    } catch (error) {
+
+    }
+})
+
 
 app.listen(5000, console.log(chalk.bold.yellow("Servidor rodando na porta 5000")));
