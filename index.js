@@ -117,7 +117,7 @@ app.post('/messages', async (req, res) => {
 app.get('/messages', async (req,res)=>{
     const user = req.headers.user;
     const limit = parseInt(req.query.limit);
-    
+
     try {
         await mongoClient.connect();
         const dbBatePapo = mongoClient.db("batepapo");
@@ -125,10 +125,37 @@ app.get('/messages', async (req,res)=>{
         const mensagens = await mensagensCollection.find({$or: [{ from: user }, { to: "Todos" }, { to: user }] }).toArray();
         const limitarMensagens = [...mensagens].slice(-limit)
         res.send(limitarMensagens);
+        mongoClient.close();
     } catch (error) {
         console.log(error)
         res.sendStatus(500);
-		mongoClient.close()
+		mongoClient.close();
+    }
+})
+
+app.post('/status', async (req, res) => {
+    const mongoClient = new MongoClient(process.env.MONGO_URI);
+    const user = req.headers.user;
+    const lastStatus = Date.now();
+    try {
+        await mongoClient.connect();
+        const dbBatePapo = mongoClient.db("batepapo");
+        const participantesCollection = dbBatePapo.collection("participantes");
+        const temParticipante = await participantesCollection.findOne({ name: user });
+        if (temParticipante) {
+            await participantesCollection.updateOne({ name: user},{$set:{lastStatus: lastStatus}});
+            res.sendStatus(200);
+            mongoClient.close();
+            return;
+        } else {
+            res.sendStatus(404);
+            mongoClient.close();
+            return;
+        }
+    } catch (error) {
+        console.log(error)
+        res.sendStatus(500);
+		mongoClient.close();
     }
 })
 
