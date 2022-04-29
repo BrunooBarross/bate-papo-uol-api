@@ -116,7 +116,7 @@ app.post('/messages', async (req, res) => {
 
 app.get('/messages', async (req,res)=>{
     const user = req.headers.user;
-    const limit = parseInt(req.params.limit);
+    const limit = parseInt(req.query.limit);
     
     try {
         await mongoClient.connect();
