@@ -114,5 +114,22 @@ app.post('/messages', async (req, res) => {
     }
 })
 
+app.get('/messages', async (req,res)=>{
+    const user = req.headers.user;
+    const limit = parseInt(req.params.limit);
+    
+    try {
+        await mongoClient.connect();
+        const dbBatePapo = mongoClient.db("batepapo");
+        const mensagensCollection = dbBatePapo.collection("mensagens");
+        const mensagens = await mensagensCollection.find({$or: [{ from: user }, { to: "Todos" }, { to: user }] }).toArray();
+        const limitarMensagens = [...mensagens].slice(-limit)
+        res.send(limitarMensagens);
+    } catch (error) {
+        console.log(error)
+        res.sendStatus(500);
+		mongoClient.close()
+    }
+})
 
 app.listen(5000, console.log(chalk.bold.yellow("Servidor rodando na porta 5000")));
