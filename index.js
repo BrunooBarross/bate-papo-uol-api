@@ -71,28 +71,46 @@ app.get("/participants", async (req, res) => {
 });
 
 app.post('/messages', async (req, res) => {
-    const mensagem = { ...req.body, from: req.headers.user }
+    const userFrom= req.headers.user;
     const horario = dayjs().locale('pt-br').format('hh:mm:ss');
+    const mensagem = {from: userFrom, ...req.body, time: horario}
 
     const validaMensagem = joi.object({
+        from: joi.string().required(),
         to: joi.string().required(),
         text: joi.string().required(),
         type: joi.string().valid('message', 'private_message').required(),
-        from: joi.string().required()
+        time: joi.optional()
     })
 
-    const validacao = validaMensagem.validate(mensagem)
+    const validacao = validaMensagem.validate(mensagem);
 
     if (validacao.error) {
-        console.log(chalk.bold.red("Algum campo está errado"), validacao.error.details)
+        console.log(chalk.bold.red("Erro Joi: Algum campo está errado"), validacao.error.details)
         res.sendStatus(422);
         return;
     }
 
     try {
+        await mongoClient.connect();
+        const dbBatePapo = mongoClient.db("batepapo");
+        const participantesCollection = dbBatePapo.collection("participantes");
+        const temParticipante = await participantesCollection.findOne({ name: userFrom });
+        if (!temParticipante) {
+            console.log(chalk.bold.red("O usuario não existe"));
+            res.sendStatus(422);
+            mongoClient.close();
+            return;
+        }
+        const mensagensCollection = dbBatePapo.collection("mensagens");
+        await mensagensCollection.insertOne(mensagem)
+        res.sendStatus(201);
+        mongoClient.close();
 
     } catch (error) {
-
+        console.log(error)
+        res.sendStatus(500);
+		mongoClient.close()
     }
 })
 
