@@ -176,10 +176,52 @@ app.delete('/messages/:id', async (req, res) => {
             return;
         }
         await mensagensCollection.deleteOne({ _id: ObjectId(id) });
-        return sendStatus(201);
+        return res.sendStatus(201);
 
     } catch (error) {
+        console.log(error)
+        res.sendStatus(500);
+        mongoClient.close();
+    }
+})
 
+app.put('/messages/:id', async (req, res) => {
+    const id = req.params.id;
+    const user = req.headers.user;
+    const mensagem = { from: user, ...req.body}
+    const validaMensagem = joi.object({
+        from: joi.string().required(),
+        to: joi.string().required(),
+        text: joi.string().required(),
+        type: joi.string().valid('message', 'private_message').required()
+    })
+    const validacao = validaMensagem.validate(mensagem);
+    if (validacao.error) {
+        console.log(chalk.bold.red("Erro Joi: erro no put"), validacao.error.details)
+        res.sendStatus(422);
+        return;
+    }
+
+    const mongoClient = new MongoClient(process.env.MONGO_URI);
+    try {
+        await mongoClient.connect();
+        const dbBatePapo = mongoClient.db("batepapo");
+        const mensagensCollection = dbBatePapo.collection("mensagens");
+        const temMensagem = await mensagensCollection.findOne({ _id: ObjectId(id) });
+        if (!temMensagem) {
+            res.sendStatus(404)
+            return;
+        } else if (temMensagem.from !== user) {
+            res.sendStatus(401);
+            return;
+        }
+        await mensagensCollection.updateOne({ _id: ObjectId(id) }, { $set: req.body })		
+        return res.sendStatus(201);
+
+    } catch (error) {
+        console.log(error)
+        res.sendStatus(500);
+        mongoClient.close();
     }
 })
 
