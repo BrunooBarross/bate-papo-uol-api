@@ -4,6 +4,7 @@ import chalk from "chalk";
 import dayjs from "dayjs";
 import joi from "joi";
 import { MongoClient, ObjectId } from "mongodb";
+import { stripHtml } from "string-strip-html";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -16,7 +17,7 @@ app.post("/participants", async (req, res) => {
     const participante = joi.object({
         name: joi.string().required()
     })
-    const validacao = participante.validate(req.body);
+    const validacao = participante.validate(req.body, { abortEarly: false });
 
     if (validacao.error) {
         console.log(chalk.bold.red("nome não pode ser vazio"), validacao.error.details)
@@ -38,14 +39,15 @@ app.post("/participants", async (req, res) => {
         } else {
             await participantesCollection.insertOne({ name: name, lastStatus: Date.now() })
             const mensagensCollection = dbBatePapo.collection("mensagens");
+            const usuarioSanitizado =  stripHtml(name).result.trim();
             await mensagensCollection.insertOne({
-                from: name,
+                from: usuarioSanitizado,
                 to: 'Todos',
                 text: 'entra na sala...',
                 type: 'status',
                 time: dayjs().locale('pt-br').format('hh:mm:ss')
             })
-            res.sendStatus(201);
+            res.status(201).send({name:usuarioSanitizado});
             mongoClient.close();
         }
     } catch (e) {
@@ -73,7 +75,13 @@ app.get("/participants", async (req, res) => {
 app.post('/messages', async (req, res) => {
     const userFrom = req.headers.user;
     const horario = dayjs().locale('pt-br').format('hh:mm:ss');
-    const mensagem = { from: userFrom, ...req.body, time: horario }
+    const mensagem = { 
+        from: stripHtml(userFrom).result.trim(), 
+        to: stripHtml(req.body.to).result.trim(),
+        text: stripHtml(req.body.text).result.trim(),
+        type: stripHtml(req.body.type).result.trim(),
+        time: horario 
+    }
 
     const validaMensagem = joi.object({
         from: joi.string().required(),
@@ -83,7 +91,7 @@ app.post('/messages', async (req, res) => {
         time: joi.optional()
     })
 
-    const validacao = validaMensagem.validate(mensagem);
+    const validacao = validaMensagem.validate(mensagem, { abortEarly: false });
 
     if (validacao.error) {
         console.log(chalk.bold.red("Erro Joi: Algum campo está errado"), validacao.error.details)
@@ -195,7 +203,7 @@ app.put('/messages/:id', async (req, res) => {
         text: joi.string().required(),
         type: joi.string().valid('message', 'private_message').required()
     })
-    const validacao = validaMensagem.validate(mensagem);
+    const validacao = validaMensagem.validate(mensagem, { abortEarly: false });
     if (validacao.error) {
         console.log(chalk.bold.red("Erro Joi: erro no put"), validacao.error.details)
         res.sendStatus(422);
