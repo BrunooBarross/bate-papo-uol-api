@@ -159,4 +159,36 @@ app.post('/status', async (req, res) => {
     }
 })
 
+const removerParticipantes = (async () => {
+    const mongoClient = new MongoClient(process.env.MONGO_URI);
+    try {
+        await mongoClient.connect();
+        const dbBatePapo = mongoClient.db("batepapo");
+        const participantesCollection = dbBatePapo.collection("participantes");
+        const mensagensCollection = dbBatePapo.collection("mensagens");
+        const todosParticipantes = await participantesCollection.find({}).toArray();
+        const maiorStatus = todosParticipantes.filter(status => ((status.lastStatus + 10000) < Date.now()));
+        
+        if(maiorStatus){
+            maiorStatus.forEach(async participante =>{
+                await participantesCollection.deleteOne({_id: participante._id});
+                await mensagensCollection.insertOne({
+                    from: participante.name,
+                    to: 'Todos',
+                    text: 'sai da sala...',
+                    type: 'status',
+                    time: dayjs().locale('pt-br').format('HH:MM:SS')
+                })
+            })
+            return;
+        }
+        return;
+    } catch (error) {
+        mongoClient.close();
+        console.log(error);
+    }
+})
+
+setInterval(removerParticipantes,15000)
+
 app.listen(5000, console.log(chalk.bold.yellow("Servidor rodando na porta 5000")));
